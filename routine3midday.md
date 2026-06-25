@@ -76,10 +76,11 @@ NEVER sell (discretionary):
   • Any position solely because it is down from avg_buy_price.
     The GTC protective stop handles that exit.
 
-Conviction reference scores (use scores from the morning daily run if available):
-  NVDA 9 · ALAB 9 · APP 9 · CRWD 9 · MSFT 9 ·
-  DDOG 8 · META 8 · AMZN 8 · TSM 8 · AXON 8 · DUOL 8 ·
-  GOOGL 7 · PLTR 7
+Conviction reference scores (use scores from the morning daily run if available;
+these fallback scores reflect current holdings as of 2026-06-25):
+  NVDA 9 · ALAB 9 · CRWD 9 ·
+  DDOG 8 · META 8 · AMZN 8 · TSM 8 · AXON 8 · DUOL 8 · COIN 8 ·
+  GOOGL 7 · RKLB 7 · IONQ 7
 
 ── STEP 4 · EXECUTE SELLS ───────────────────────────────────────────────────
 For each SELL:

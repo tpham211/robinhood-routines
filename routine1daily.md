@@ -140,6 +140,10 @@ Document which tier was applied and why.
     If position market value exceeds 1.5× its score-based target weight,
     trim back to the target weight regardless of which tier applies.
 
+Stop distance for all tiers:
+  If ATR(14) is available: stop_pct = max(10%, 2 × ATR(14) / current price), capped at 15%
+  If ATR(14) unavailable: stop_pct = 10% (flat fallback — do not skip the stop)
+
 For stop escalation (Tiers 1–4):
   1. Cancel the existing GTC stop for that symbol.
   2. Immediately place the new GTC stop at the escalated level.
