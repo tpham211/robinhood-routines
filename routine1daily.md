@@ -50,9 +50,10 @@ do not trade and report the failure in the final output.
      cancel, or replace any order — and stop.
 
 ── EXECUTION WINDOW ──────────────────────────────────────────────────────────
-Only submit buy or sell orders between 9:45 AM and 3:45 PM Eastern Time on a
-regular trading day. Outside this window: analysis and reporting only. Do not
-queue orders for the next open or place extended-hours orders.
+Run on weekdays only. Only submit buy or sell orders between 9:45 AM and
+3:45 PM Eastern Time on a regular trading day. Outside this window: analysis
+and reporting only. Do not queue orders for the next open or place
+extended-hours orders.
 
 ── STEP 1 · ASSESS CURRENT STATE ────────────────────────────────────────────
 Call in parallel:
@@ -171,10 +172,12 @@ Stop distance for all tiers:
   If ATR(14) unavailable: stop_pct = 10% (flat fallback — do not skip the stop)
 
 For stop escalation (Tiers 1–4):
-  1. Cancel the existing GTC stop for that symbol.
-  2. Immediately place the new GTC stop at the escalated level.
-  3. Confirm the replacement stop is accepted before continuing.
-  4. If the new stop cannot be placed, restore the original stop and flag the failure.
+  1. Identify the current stop order type for that symbol (GTC or GFD).
+  2. Cancel the existing stop for that symbol.
+  3. Place the new stop at the escalated level using the same order type
+     (GFD for fractional positions, GTC for whole-share positions).
+  4. Confirm the replacement is accepted before continuing.
+  5. If the new stop cannot be placed, restore the original stop and flag the failure.
 
 For partial sells (Tiers 2–4 and weight trim):
   Execute the partial sell following the same procedure as STEP 6 (full sells).

@@ -19,7 +19,7 @@ State the circuit breaker clearly in output.
 
 ── STEP 2 · POSITION AND STOP SCAN ─────────────────────────────────────────
 Call get_equity_positions, get_equity_quotes on all held symbols, and
-get_equity_orders (state=new or queued) to identify GTC protective stop orders.
+get_equity_orders (state=new or queued) to identify protective stop orders (GTC or GFD).
 
 For each position calculate:
   A) P&L from cost    → (current − avg_buy_price) / avg_buy_price × 100
@@ -35,8 +35,8 @@ but not yet applied. This is the last opportunity before the close to lock in
 gains for the day. Apply the highest unmet tier using P&L% vs avg_buy_price.
 
   Tier 1 — Breakeven protection (gain ≥15%):
-    Cancel the existing GTC stop; replace it at entry price (avg_buy_price).
-    Confirm replacement before continuing. Restore original if replacement fails.
+    Cancel the existing stop (GTC or GFD); replace it at entry price (avg_buy_price)
+    using the same order type. Confirm before continuing. Restore original if fails.
 
   Tier 2 — Partial profit lock (gain ≥25%):
     Sell 25% of current shares. Raise stop on remainder to entry +10%.
@@ -69,9 +69,9 @@ NEVER sell (discretionary):
     The GTC protective stop handles that exit.
 
 Conviction scores: use the scores produced by today's morning daily run if
-available. If not available, apply the Growth Score rubric from routine1daily.md
-to each held position using the latest verified quarterly data before making
-any discretionary sell decision. Do not use hardcoded or remembered scores.
+available. If not available, fetch https://raw.githubusercontent.com/tpham211/robinhood-routines/main/routine1daily.md
+and apply its Growth Score rubric to each held position using the latest
+verified quarterly data. Do not use hardcoded or remembered scores.
 
 ── STEP 4 · EXECUTE SELLS ───────────────────────────────────────────────────
 For each SELL:

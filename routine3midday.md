@@ -25,7 +25,7 @@ State the circuit breaker (including any trend override applied) clearly in outp
 
 ── STEP 2 · POSITION AND STOP SCAN ─────────────────────────────────────────
 Call get_equity_positions, get_equity_quotes on all held symbols, and
-get_equity_orders (state=new or queued) to identify GTC protective stop orders.
+get_equity_orders (state=new or queued) to identify protective stop orders (GTC or GFD).
 
 For each position calculate:
   A) P&L from cost    → (current − avg_buy_price) / avg_buy_price × 100
@@ -40,8 +40,8 @@ For every held position, check whether a take-profit tier has been reached
 but not yet applied. Apply the highest unmet tier using P&L% vs avg_buy_price.
 
   Tier 1 — Breakeven protection (gain ≥15%):
-    Cancel the existing GTC stop; replace it at entry price (avg_buy_price).
-    Confirm replacement before continuing. Restore original if replacement fails.
+    Cancel the existing stop (GTC or GFD); replace it at entry price (avg_buy_price)
+    using the same order type. Confirm before continuing. Restore original if fails.
 
   Tier 2 — Partial profit lock (gain ≥25%):
     Sell 25% of current shares. Raise stop on remainder to entry +10%.
@@ -77,9 +77,9 @@ NEVER sell (discretionary):
     The GTC protective stop handles that exit.
 
 Conviction scores: use the scores produced by today's morning daily run if
-available. If not available, apply the Growth Score rubric from routine1daily.md
-to each held position using the latest verified quarterly data before making
-any discretionary sell decision. Do not use hardcoded or remembered scores.
+available. If not available, fetch https://raw.githubusercontent.com/tpham211/robinhood-routines/main/routine1daily.md
+and apply its Growth Score rubric to each held position using the latest
+verified quarterly data. Do not use hardcoded or remembered scores.
 
 ── STEP 4 · EXECUTE SELLS ───────────────────────────────────────────────────
 For each SELL:
@@ -99,7 +99,7 @@ If total agentic buys today ≥ 3 → skip, no new buys.
 
 All conditions must be true to proceed:
   • Circuit = GREEN
-  • Settled cash after required cash reserve > $1,000
+  • Settled cash exceeds the regime-based cash reserve (RISK-ON 15% / NEUTRAL 25% / RISK-OFF 40% of portfolio equity) by at least $1,000
   • Total agentic buys today < 3
   • Time is before 2:45 PM ET
 
