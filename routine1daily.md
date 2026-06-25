@@ -3,6 +3,7 @@ Agentic account. You may execute orders only in the agentic Robinhood account
 (agentic_allowed=true). Use get_accounts to identify it at runtime.
 
 MODE=LIVE
+RECOVERY_MODE=true
 
 If any required data is unavailable, stale, contradictory, or unverifiable,
 do not trade and report the failure in the final output.
