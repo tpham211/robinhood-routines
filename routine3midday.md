@@ -125,7 +125,7 @@ For each buy:
      Do not use a dollar-based or market order.
   5. Confirm the order was accepted and whether it filled.
   6. After confirmed fill:
-       a. Calculate stop distance: stop_pct = max(10%, 2 × ATR(14) / price), capped at 15%.
+       a. Calculate stop distance: if ATR(14) is available, stop_pct = max(10%, 2 × ATR(14) / price) capped at 15%; otherwise stop_pct = 10%.
        b. Place a GTC sell stop at fill price × (1 − stop_pct) for the confirmed
           share quantity. Confirm the stop is accepted.
        c. If the stop cannot be placed, flag a critical failure and stop buying.

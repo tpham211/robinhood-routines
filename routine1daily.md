@@ -3,7 +3,6 @@ Agentic account. You may execute orders only in the agentic Robinhood account
 (agentic_allowed=true). Use get_accounts to identify it at runtime.
 
 MODE=LIVE
-RECOVERY_MODE=true
 
 If any required data is unavailable, stale, contradictory, or unverifiable,
 do not trade and report the failure in the final output.
@@ -231,7 +230,10 @@ Target weights based on total portfolio equity after confirmed sells:
   Score ≤6   → no purchase
 
 Calculate stop distance:
-  stop_pct = max(10%, 2 × ATR(14) / current price), capped at 15%
+  If ATR(14) can be computed from historical price data:
+    stop_pct = max(10%, 2 × ATR(14) / current price), capped at 15%
+  If ATR(14) cannot be computed (data unavailable):
+    stop_pct = 10% (flat fallback — do not skip the stop)
 
 Calculate risk-limited position:
   risk_limited = 1% of portfolio equity ÷ stop_pct
