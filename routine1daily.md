@@ -3,24 +3,33 @@ Agentic account. You may execute orders only in the agentic Robinhood account
 (agentic_allowed=true). Use get_accounts to identify it at runtime.
 
 MODE=LIVE
-RECOVERY_MODE=true
 
-── RECOVERY_MODE CHECK (read before anything else) ───────────────────────────
+── STOP MAINTENANCE (runs every day before idempotency check) ────────────────
+Before any trading decisions, place or refresh protective stops for all positions.
+This step does not count toward the idempotency check.
+
+  1. Call get_equity_positions, get_equity_quotes on all held symbols, and
+     get_equity_orders (state=new or queued) to identify existing stop orders.
+  2. For every held position, check whether a valid stop order exists for today.
+  3. For any position missing a stop (or whose stop has expired):
+       Calculate stop price:
+         If ATR(14) is available: stop_pct = max(10%, 2 × ATR(14) / price), capped at 15%
+         If ATR(14) unavailable: stop_pct = 10% (flat fallback — do not skip)
+         Stop price = avg_buy_price × (1 − stop_pct)
+       Determine stop order type:
+         If position is whole shares only → place GTC sell stop
+         If position has any fractional component → place GFD sell stop
+           (Robinhood does not support GTC stops on fractional quantities)
+       Round share quantity DOWN to nearest whole share for the stop order.
+       Place the stop order. Confirm it is accepted.
+  4. Flag any stop that cannot be placed — but continue to the next position.
+     Do not halt the entire run for a single stop failure.
+  5. Output stop placement results before proceeding.
+
+── RECOVERY_MODE CHECK ───────────────────────────────────────────────────────
 If RECOVERY_MODE=true:
-  Skip the idempotency check entirely. Proceed directly to these steps:
-  1. Call get_portfolio, get_equity_positions, get_equity_quotes on all held
-     symbols, and get_equity_orders (state=new or queued).
-  2. For every held position, check whether a GTC protective stop exists.
-  3. For any position missing a stop, calculate stop price:
-       If ATR(14) is available: stop_pct = max(10%, 2 × ATR(14) / price), capped at 15%
-       If ATR(14) unavailable: stop_pct = 10% (flat fallback — do not skip the stop)
-       Stop price = avg_buy_price × (1 − stop_pct)
-  4. Place a GTC sell stop for the full confirmed share quantity.
-  5. Confirm each stop is accepted. Flag any that fail.
-  6. Do not initiate new positions, sell existing positions, or resubmit
-     rejected orders without explicit user approval.
-  7. Output: each position · stop placed Y/N · stop price · any failures.
-  Then stop. Do not continue to the normal daily steps below.
+  After stop maintenance above is complete, output full position and stop
+  summary, then stop. Do not proceed to trading steps below.
 
 If RECOVERY_MODE is not set, continue normally below.
 
@@ -30,14 +39,15 @@ If any required data is unavailable, stale, contradictory, or unverifiable,
 do not trade and report the failure in the final output.
 
 ── IDEMPOTENCY CHECK ─────────────────────────────────────────────────────────
-Before doing anything else:
   1. Call get_equity_orders for today's Eastern Time date with
      placed_agent=agentic. Include filled, partially_filled, new, queued,
      canceled, and rejected orders.
-  2. If ANY agentic order was submitted today, the daily run has already
-     executed. Output current positions, open orders, protective stops,
-     buying power, and account equity — do not submit, cancel, or replace
-     any order — and stop.
+  2. Filter to buy and sell equity orders only. Ignore stop orders —
+     stop placement is maintenance and does not constitute a completed run.
+  3. If ANY agentic buy or sell equity order was submitted today, the daily
+     trading run has already executed. Output current positions, open orders,
+     protective stops, buying power, and account equity — do not submit,
+     cancel, or replace any order — and stop.
 
 ── EXECUTION WINDOW ──────────────────────────────────────────────────────────
 Only submit buy or sell orders between 9:45 AM and 3:45 PM Eastern Time on a
@@ -280,6 +290,8 @@ For each buy:
      and risk limits.
   4. Verify bid-ask spread ≤1% — skip if wider.
   5. Calculate share quantity from the approved dollar allocation.
+     Always round DOWN to the nearest whole share — no fractional purchases.
+     This ensures GTC stop orders can be placed after fill.
   6. Call review_equity_order. Verify symbol, side, share quantity, order type,
      limit price, and time-in-force. Abort if review differs from intended order.
   7. Place a share-based GFD limit order. Set limit ≤0.5% above current quote.

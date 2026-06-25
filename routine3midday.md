@@ -120,6 +120,7 @@ Position sizing (use portfolio equity basis, not buying power):
 For each buy:
   1. Verify bid-ask spread ≤1% — skip if wider.
   2. Calculate share quantity from the approved dollar allocation.
+     Always round DOWN to the nearest whole share — no fractional purchases.
   3. Call review_equity_order. Abort if review differs from intended order.
   4. Place a share-based GFD limit order. Set limit ≤0.5% above current quote.
      Do not use a dollar-based or market order.
@@ -127,7 +128,7 @@ For each buy:
   6. After confirmed fill:
        a. Calculate stop distance: if ATR(14) is available, stop_pct = max(10%, 2 × ATR(14) / price) capped at 15%; otherwise stop_pct = 10%.
        b. Place a GTC sell stop at fill price × (1 − stop_pct) for the confirmed
-          share quantity. Confirm the stop is accepted.
+          share quantity (whole shares only — GTC is supported). Confirm accepted.
        c. If the stop cannot be placed, flag a critical failure and stop buying.
   7. Refresh positions and buying power before evaluating the next candidate.
 
