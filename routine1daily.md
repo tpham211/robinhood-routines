@@ -5,6 +5,27 @@ Agentic account. You may execute orders only in the agentic Robinhood account
 MODE=LIVE
 RECOVERY_MODE=true
 
+── RECOVERY_MODE CHECK (read before anything else) ───────────────────────────
+If RECOVERY_MODE=true:
+  Skip the idempotency check entirely. Proceed directly to these steps:
+  1. Call get_portfolio, get_equity_positions, get_equity_quotes on all held
+     symbols, and get_equity_orders (state=new or queued).
+  2. For every held position, check whether a GTC protective stop exists.
+  3. For any position missing a stop, calculate stop price:
+       If ATR(14) is available: stop_pct = max(10%, 2 × ATR(14) / price), capped at 15%
+       If ATR(14) unavailable: stop_pct = 10% (flat fallback — do not skip the stop)
+       Stop price = avg_buy_price × (1 − stop_pct)
+  4. Place a GTC sell stop for the full confirmed share quantity.
+  5. Confirm each stop is accepted. Flag any that fail.
+  6. Do not initiate new positions, sell existing positions, or resubmit
+     rejected orders without explicit user approval.
+  7. Output: each position · stop placed Y/N · stop price · any failures.
+  Then stop. Do not continue to the normal daily steps below.
+
+If RECOVERY_MODE is not set, continue normally below.
+
+──────────────────────────────────────────────────────────────────────────────
+
 If any required data is unavailable, stale, contradictory, or unverifiable,
 do not trade and report the failure in the final output.
 
@@ -17,12 +38,6 @@ Before doing anything else:
      executed. Output current positions, open orders, protective stops,
      buying power, and account equity — do not submit, cancel, or replace
      any order — and stop.
-
-RECOVERY_MODE (set explicitly by user only):
-  • Reconcile order status, positions, buying power, and protective stops.
-  • Repair a missing or incorrectly sized protective stop if clearly necessary.
-  • Do not initiate new positions.
-  • Do not resubmit rejected or canceled orders without explicit user approval.
 
 ── EXECUTION WINDOW ──────────────────────────────────────────────────────────
 Only submit buy or sell orders between 9:45 AM and 3:45 PM Eastern Time on a
