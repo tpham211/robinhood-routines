@@ -26,10 +26,26 @@ This step does not count toward the idempotency check.
      Do not halt the entire run for a single stop failure.
   5. Output stop placement results before proceeding.
 
+── FRACTIONAL CLEANUP (runs once per position, before idempotency check) ─────
+After stop maintenance, check for pure fractional positions — positions where
+the total quantity is less than 1 whole share. These cannot receive any stop
+order and are permanently unprotected.
+
+For each pure fractional position (quantity < 1.0 shares):
+  1. Check for any existing or pending sell order on that symbol — skip if found.
+  2. Call review_equity_order (sell, market, gfd, shares_available_for_sells).
+     Verify symbol, side, quantity, and order type. Abort if review differs.
+  3. Place a market GFD sell order for the full fractional quantity.
+     Market orders are acceptable here — these are sub-$500 positions and
+     price precision is less important than eliminating unprotected exposure.
+  4. Confirm the order was accepted.
+  5. Do not count these cleanup sells toward the daily 3-buy-order cap or
+     idempotency check. They are maintenance, not trading decisions.
+
 ── RECOVERY_MODE CHECK ───────────────────────────────────────────────────────
 If RECOVERY_MODE=true:
-  After stop maintenance above is complete, output full position and stop
-  summary, then stop. Do not proceed to trading steps below.
+  After stop maintenance and fractional cleanup above are complete, output full
+  position and stop summary, then stop. Do not proceed to trading steps below.
 
 If RECOVERY_MODE is not set, continue normally below.
 
