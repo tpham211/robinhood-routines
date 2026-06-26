@@ -69,9 +69,10 @@ NEVER sell (discretionary):
     The GTC protective stop handles that exit.
 
 Conviction scores: use the scores produced by today's morning daily run if
-available. If not available, fetch https://raw.githubusercontent.com/tpham211/robinhood-routines/main/routine1daily.md
-and apply its Growth Score rubric to each held position using the latest
-verified quarterly data. Do not use hardcoded or remembered scores.
+available. If not available, call get_equity_fundamentals on all held symbols
+and apply the Growth Score rubric from routine1daily.md (fetch from
+https://raw.githubusercontent.com/tpham211/robinhood-routines/main/routine1daily.md
+if needed). Use live fundamental data — do not use hardcoded or remembered scores.
 
 ── STEP 4 · EXECUTE SELLS ───────────────────────────────────────────────────
 For each SELL:
