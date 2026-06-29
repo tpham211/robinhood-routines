@@ -312,7 +312,7 @@ Calculate risk-limited position:
 Final purchase amount = smallest of:
   • Score-based target amount
   • risk_limited amount
-  • Remaining GICS sector capacity (max 30% of portfolio equity per sector)
+  • Remaining GICS sector capacity (max 40% of portfolio equity per sector)
   • Remaining theme capacity (max 25% per economic theme;
     max 20% combined for crypto-sensitive exposure)
   • Settled cash available after maintaining the required cash reserve
@@ -321,8 +321,8 @@ Final purchase amount = smallest of:
 If the final amount is below 2% of portfolio equity, skip this candidate.
 
 ── STEP 11 · EXECUTE BUYS ────────────────────────────────────────────────────
-Select no more than 3 highest-scoring eligible candidates. Do not force a
-purchase when fewer than 3 candidates qualify.
+Select no more than 5 highest-scoring eligible candidates. Do not force a
+purchase when fewer than 5 candidates qualify.
 
 For each buy:
   1. Call get_equity_tradability.
@@ -366,10 +366,10 @@ reducing safeguards, or resubmitting. Report the failure in the output.
   • Settled cash only — never use margin or unsettled proceeds
   • Minimum cash reserve per market regime (15% / 25% / 40% of portfolio equity)
   • Maximum individual position: 10% of portfolio equity
-  • Maximum GICS sector exposure: 30% of portfolio equity
+  • Maximum GICS sector exposure: 40% of portfolio equity
   • Maximum single economic theme: 25% of portfolio equity
   • Maximum combined crypto-sensitive exposure: 20% of portfolio equity
-  • Maximum 3 new buy orders per daily run
+  • Maximum 5 new buy orders per daily run
   • Maximum 1 buy order per symbol per trading day
   • Do not average down
   • Additional purchase on a held position only when: position is below target

@@ -105,18 +105,19 @@ For each SELL:
 
 ── STEP 5 · BUY GATE ────────────────────────────────────────────────────────
 Check get_equity_orders for today, side=buy, placed_agent=agentic.
-If total agentic buys today ≥ 3 → skip, no new buys.
+If total agentic buys today ≥ 5 → skip, no new buys.
 
 All conditions must be true to proceed:
   • Circuit = GREEN
   • Settled cash exceeds the regime-based cash reserve (RISK-ON 15% / NEUTRAL 25% / RISK-OFF 40% of portfolio equity) by at least $1,000
-  • Total agentic buys today < 3
+  • Total agentic buys today < 5
   • Time is before 3:15 PM ET
 
 If gate passes, score candidates NOT already held and NOT already bought today
 using get_equity_fundamentals + the Growth Score rubric (same method as above):
   [NVDA, MSFT, META, AMZN, AAPL, GOOGL, CRWD, DDOG, APP, ALAB,
-   PLTR, AXON, DUOL, COIN, RKLB, AVGO, MRVL, ARM, CRM, NOW]
+   PLTR, AXON, DUOL, COIN, RKLB, AVGO, MRVL, ARM, CRM, NOW,
+   LLY, ISRG, V, CBOE, CME, COF, GEV, PH, COST, TXRH]
 
 Only candidates scoring ≥7 are eligible for purchase.
 Do NOT apply a higher threshold (e.g. ≥9) — ≥7 is the correct minimum.
@@ -125,7 +126,7 @@ Position sizing (use portfolio equity basis, not buying power):
   Score 9–10 → up to 10% of portfolio equity
   Score 8    → up to 7.5% of portfolio equity
   Score 7    → up to 5% of portfolio equity
-  Apply all sector (≤30%), theme (≤25%), cash reserve, and 10%-max-position limits.
+  Apply all sector (≤40%), theme (≤25%), cash reserve, and 10%-max-position limits.
   Minimum purchase: 2% of portfolio equity. Skip if final amount is below this.
 
 Max 2 new orders this run.
@@ -162,6 +163,6 @@ or any position down >3% intraday. Silence on clean GREEN runs with no trades.
   • Never cancel a GTC stop except for the specific symbol currently being sold
   • Never sell a position purchased today unless material thesis invalidation applies
   • Never place more than 2 buy orders in this run
-  • Global daily agentic buy cap: 3 orders across all runs combined
+  • Global daily agentic buy cap: 5 orders across all runs combined
   • Always call review_equity_order before place_equity_order
   • Stop all trading if any required data is unavailable or contradictory
