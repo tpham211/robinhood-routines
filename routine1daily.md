@@ -105,44 +105,43 @@ Minimum cash reserve by regime (% of total portfolio equity):
   RISK-OFF  → 40%
 
 ── STEP 3 · OBJECTIVE GROWTH SCORE ──────────────────────────────────────────
-Score every held position and candidate 0–10 using live fundamental data
-fetched via get_equity_fundamentals. Do NOT use training-data knowledge for
-financial metrics — always fetch fresh data. If a metric field is null or
-missing from the API response, award 0 for that metric only.
+Score every held position and candidate 0–10 using a two-source approach:
+live API data for technical factors, training knowledge for fundamentals.
 
-DATA FETCH: Call get_equity_fundamentals on all symbols being scored.
-Key fields and their rubric mapping:
+DATA FETCH:
+  1. Call get_equity_fundamentals on all symbols. Use whatever fields are
+     returned (pe_ratio, eps, revenue, market_cap, sector, etc.) for context
+     and for any rubric items they directly support.
+  2. Call get_equity_historicals (1 year, daily) for technical calculations.
+  3. For fundamental growth metrics NOT returned by the API (revenue growth,
+     earnings growth, margin expansion, balance sheet), use your training
+     knowledge from the most recently reported quarter you have data for.
+     Note the approximate report date. Do not refuse to score — use best
+     available data and note the source.
 
-  revenue_growth_yoy          → Revenue Growth
-  revenue_growth_prior_yoy    → Revenue Acceleration (compare to revenue_growth_yoy)
-  earnings_growth_yoy         → Earnings or Cash-Flow Growth (EPS path)
-  fcf_growth_yoy              → Earnings or Cash-Flow Growth (FCF path, use when EPS negative)
-  operating_margin_expansion  → Margin Expansion (bps YoY, operating)
-  fcf_margin_expansion        → Margin Expansion (bps YoY, FCF — use if operating unavailable)
-  net_cash                    → Balance-Sheet Quality (positive = net cash position)
-  net_debt_to_fcf             → Balance-Sheet Quality (≤2× qualifies)
-  pe_ratio, ev_to_sales       → Valuation inputs for Step 9
-
-If get_equity_fundamentals returns partial data for a symbol, use what is
-available and award 0 only for fields that are null. Do not skip the symbol.
+IMPORTANT: A score based on training knowledge is valid. A score of 0 awarded
+solely because the API did not return a field is NOT valid and will
+incorrectly block all trading. Only award 0 if the metric is genuinely
+unknown or unfavorable based on all available information.
 
   Revenue Growth (0–2 pts)
-    revenue_growth_yoy ≥25%: 2 pts  |  15–24.9%: 1 pt  |  <15%: 0 pts
+    Most recent reported quarter, YoY:
+    ≥25%: 2 pts  |  15–24.9%: 1 pt  |  <15%: 0 pts
 
   Earnings or Cash-Flow Growth (0–2 pts)
-    When diluted EPS is positive (earnings_growth_yoy available):
-      earnings_growth_yoy ≥25%: 2 pts  |  10–24.9%: 1 pt  |  <10%: 0 pts
-    When EPS is negative, use fcf_growth_yoy:
-      FCF turned positive or improved ≥30%: 2 pts
-      FCF improved 10–29.9%: 1 pt  |  Otherwise: 0 pts
+    When diluted EPS is positive:
+      EPS growth ≥25% YoY: 2 pts  |  10–24.9%: 1 pt  |  <10%: 0 pts
+    When EPS is negative, use free cash flow:
+      FCF turned positive or improved ≥30% YoY: 2 pts
+      FCF improved 10–29.9% YoY: 1 pt  |  Otherwise: 0 pts
 
   Revenue Acceleration (0–1 pt)
-    revenue_growth_yoy exceeded revenue_growth_prior_yoy by ≥3 pp: 1 pt
+    Latest-quarter YoY revenue growth exceeded prior quarter's YoY by ≥3 pp: 1 pt
 
   Margin Expansion (0–1 pt)
-    operating_margin_expansion ≥200 bps YoY, OR fcf_margin_expansion ≥300 bps: 1 pt
+    Operating margin expanded ≥200 bps YoY, OR FCF margin expanded ≥300 bps YoY: 1 pt
 
-  Relative Strength (0–2 pts)
+  Relative Strength (0–2 pts)  ← ALWAYS use live price data for these
     Previous close above both 50-day and 200-day MA: 1 pt
     3-month total return exceeded QQQ total return by ≥5 pp: 1 pt
 
@@ -151,12 +150,15 @@ available and award 0 only for fields that are null. Do not skip the symbol.
     launched commercial product, confirmed customer ramp, raised company
     guidance, contract award, regulatory decision, or documented capacity
     expansion. Earnings dates alone, rumors, and social-media posts: 0 pts.
-    Use training knowledge for catalysts — this is qualitative, not metric-based.
 
   Balance-Sheet Quality (0–1 pt)
-    net_cash > 0 (net cash position): 1 pt
-    OR: positive FCF AND net_debt_to_fcf ≤ 2: 1 pt
-    If both fields null: 0 pts
+    Net cash position (cash > total debt): 1 pt
+    OR positive FCF with net debt <2× trailing FCF: 1 pt
+
+DATA SOURCE NOTATION: In your output, label each score with the data source:
+  [API] = from get_equity_fundamentals response
+  [TK:YYYY-Qn] = from training knowledge, most recent quarter known
+  [LIVE] = computed from live price/historical data
 
 ── STEP 4 · RED-FLAG REVIEW ─────────────────────────────────────────────────
 Review each position and candidate. Document the exact reason for each deduction.

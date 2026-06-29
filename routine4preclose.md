@@ -69,19 +69,18 @@ NEVER sell (discretionary):
     The GTC protective stop handles that exit.
 
 Conviction scores: use the scores produced by today's morning daily run if
-available. If not available, score held positions as follows:
-  1. Call get_equity_fundamentals on all held symbols.
-  2. Fetch the Growth Score rubric from:
+available. If not available, apply the two-source scoring method:
+  1. Call get_equity_fundamentals on all held symbols (use returned fields
+     for context; note that growth rate fields may not be present).
+  2. For fundamental growth metrics not returned by the API, use training
+     knowledge from the most recently reported quarter. Do not award 0
+     solely because the API did not return a field — use best available data.
+  3. For Relative Strength, always use live price data from get_equity_historicals.
+  4. Fetch the full rubric from:
      https://raw.githubusercontent.com/tpham211/robinhood-routines/main/routine1daily.md
-  3. Apply the rubric using the live get_equity_fundamentals data — not training
-     knowledge. Map API fields directly: revenue_growth_yoy → Revenue Growth,
-     earnings_growth_yoy / fcf_growth_yoy → Earnings/FCF Growth,
-     revenue_growth_prior_yoy → Revenue Acceleration,
-     operating_margin_expansion / fcf_margin_expansion → Margin Expansion,
-     net_cash / net_debt_to_fcf → Balance-Sheet Quality.
-  4. Relative Strength and Verified Catalyst require price data and qualitative
-     judgment respectively — compute from available price history and known facts.
-Do not use hardcoded or remembered scores.
+  5. Label each score component with its data source [API], [TK:YYYY-Qn], or [LIVE].
+IMPORTANT: A score based on training knowledge is valid. Scoring everything 0
+because the API omitted a field is incorrect and must not be done.
 
 ── STEP 4 · EXECUTE SELLS ───────────────────────────────────────────────────
 For each SELL:
