@@ -240,7 +240,9 @@ Mark SELL when one of the following applies:
 
   Technical + Conviction Exit (all three must be true):
     • Final score is 6 or lower.
-    • Held ≥5 completed trading sessions.
+    • Held ≥5 completed trading sessions since THIS account's purchase date.
+      Count only sessions elapsed since the position was opened — do not count
+      sessions the stock was below its MA before the position was opened.
     • Stock closed below its 50-day MA on two consecutive completed sessions.
 
 Positions scoring 5–6 that do not meet a sell condition: HOLD, cannot be increased.
