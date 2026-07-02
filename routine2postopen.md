@@ -20,7 +20,9 @@ State the circuit breaker clearly in output.
 
 ── STEP 2 · POSITION AND STOP SCAN ─────────────────────────────────────────
 Call get_equity_positions, get_equity_quotes on all held symbols, and
-get_equity_orders (state=new or queued) to identify protective stop orders (GTC or GFD).
+get_equity_orders (state=new, queued, confirmed, or partially_filled) to
+identify protective stop orders (GTC or GFD). Stops may appear in
+state=confirmed rather than state=new or queued — check all open states.
 
 For each position calculate:
   A) P&L from cost    → (current − avg_buy_price) / avg_buy_price × 100
@@ -107,8 +109,21 @@ For each SELL:
 Check get_equity_orders for today, side=buy, placed_agent=agentic.
 If total agentic buys today ≥ 5 → skip, no new buys.
 
+REGIME DETECTION (compute independently — do not rely on morning run output):
+  Call get_equity_historicals for SPY and QQQ (1 year, daily).
+  Use previous completed closing prices to compute 50-day MA and 200-day MA.
+  RISK-ON:  SPY above 200MA AND QQQ above 200MA AND QQQ above 50MA
+  NEUTRAL:  Any other valid combination
+  RISK-OFF: SPY below 200MA AND QQQ below 200MA
+  UNKNOWN:  Data unavailable → skip all buys this run
+
+COOLING-OFF RULE: Any symbol exited via a triggered stop OR discretionary sell
+  within the last 2 completed trading sessions is ineligible for purchase.
+  Check get_equity_orders (filled, past 5 days) before scoring candidates.
+
 All conditions must be true to proceed:
   • Circuit = GREEN
+  • Regime is not UNKNOWN
   • Settled cash exceeds the regime-based cash reserve (RISK-ON 15% / NEUTRAL 25% / RISK-OFF 40% of portfolio equity) by at least $1,000
   • Total agentic buys today < 5
   • Time is before 3:15 PM ET

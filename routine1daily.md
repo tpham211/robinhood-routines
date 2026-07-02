@@ -9,9 +9,15 @@ Before any trading decisions, place or refresh protective stops for all position
 This step does not count toward the idempotency check.
 
   1. Call get_equity_positions, get_equity_quotes on all held symbols, and
-     get_equity_orders (state=new or queued) to identify existing stop orders.
-  2. For every held position, check whether a valid stop order exists for today.
-  3. For any position missing a stop (or whose stop has expired):
+     get_equity_orders (state=new, queued, confirmed, or partially_filled) to
+     identify existing stop orders. Check all open states — stops may appear
+     in state=confirmed rather than state=new or queued.
+  2. For every held position, check whether a valid stop order exists.
+     A stop is valid only if its stop price falls within the 10%–15% range
+     below avg_buy_price (i.e., avg_buy_price × 0.85 ≤ stop_price ≤ avg_buy_price × 0.90).
+     A stop that exists but is tighter than 10% or wider than 15% is treated
+     as missing and must be recalibrated.
+  3. For any position missing a stop, or whose stop is outside the valid range:
        Calculate stop price:
          If ATR(14) is available: stop_pct = max(10%, 2 × ATR(14) / price), capped at 15%
          If ATR(14) unavailable: stop_pct = 10% (flat fallback — do not skip)
@@ -21,10 +27,14 @@ This step does not count toward the idempotency check.
          If position has any fractional component → place GFD sell stop
            (Robinhood does not support GTC stops on fractional quantities)
        Round share quantity DOWN to nearest whole share for the stop order.
+       Cancel the existing out-of-range stop (if one exists) before placing the new one.
        Place the stop order. Confirm it is accepted.
-  4. Flag any stop that cannot be placed — but continue to the next position.
+  4. Exception: do NOT recalibrate a stop that has been deliberately raised
+     above avg_buy_price as part of a take-profit tier escalation (Tier 1–4).
+     A stop above entry price is intentional and must not be moved down.
+  5. Flag any stop that cannot be placed — but continue to the next position.
      Do not halt the entire run for a single stop failure.
-  5. Output stop placement results before proceeding.
+  6. Output stop placement results before proceeding.
 
 ── FRACTIONAL CLEANUP (runs once per position, before idempotency check) ─────
 After stop maintenance, check for pure fractional positions — positions where
@@ -266,6 +276,12 @@ For each SELL:
      buying power is updated.
 
 ── STEP 8 · CANDIDATE UNIVERSE ──────────────────────────────────────────────
+COOLING-OFF RULE: Before scoring candidates, call get_equity_orders for the
+past 5 trading days (filled orders only). Any symbol that was exited via a
+triggered GTC/GFD stop OR via a discretionary sell order within the last 2
+completed trading sessions is ineligible for purchase in this run.
+This prevents immediately re-buying into names that were just cut for weakness.
+
 Begin with:
   PLTR, HOOD, IBKR, PGR, SPCX, CVS, DAL, OXY, IONQ, RKLB, AVGO, SBUX,
   NKE, CAVA, POOL, CRM, NOW, CMG, TSM, META, AMZN, CRWD, DDOG, COIN,

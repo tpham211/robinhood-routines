@@ -19,13 +19,15 @@ State the circuit breaker clearly in output.
 
 ── STEP 2 · POSITION AND STOP SCAN ─────────────────────────────────────────
 Call get_equity_positions, get_equity_quotes on all held symbols, and
-get_equity_orders (state=new or queued) to identify protective stop orders (GTC or GFD).
+get_equity_orders (state=new, queued, confirmed, or partially_filled) to
+identify protective stop orders (GTC or GFD). Stops may appear in
+state=confirmed rather than state=new or queued — check all open states.
 
 For each position calculate:
   A) P&L from cost    → (current − avg_buy_price) / avg_buy_price × 100
   B) Intraday move    → (current − adjusted_previous_close) /
                          adjusted_previous_close × 100
-  C) Protective stop: verify a GTC stop exists and record its stop price.
+  C) Protective stop: verify a GTC or GFD stop exists and record its stop price.
 
 Flag any position missing a protective stop. Do not cancel any stops in this step.
 
