@@ -380,6 +380,16 @@ Stop all trading for the run when:
 Do not compensate by using a different order type, raising the limit price,
 reducing safeguards, or resubmitting. Report the failure in the output.
 
+IMPORTANT — training knowledge staleness is NOT a halt condition:
+  The scoring rubric explicitly permits using training knowledge labeled
+  [TK:YYYY-Qn] when live API data does not return fundamental growth fields.
+  Training knowledge being dated (e.g., 6+ months old) does NOT constitute
+  "stale or contradictory data" for the purposes of halting trading.
+  Score with best available data, label each component with its source
+  ([API], [TK:YYYY-Qn], or [LIVE]), and proceed. Only halt if a tool call
+  itself fails or returns contradictory data — not because fundamentals
+  must be estimated from training knowledge.
+
 ── HARD PORTFOLIO LIMITS ─────────────────────────────────────────────────────
   • Settled cash only — never use margin or unsettled proceeds
   • Minimum cash reserve per market regime (15% / 25% / 40% of portfolio equity)
