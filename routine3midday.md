@@ -41,19 +41,31 @@ Flag any position missing a protective stop. Do not cancel any stops in this ste
 For every held position, check whether a take-profit tier has been reached
 but not yet applied. Apply the highest unmet tier using P&L% vs avg_buy_price.
 
+TIER STATE DETECTION — infer applied tiers from current stop price only.
+Do NOT scan order history to determine tier state; order history is ambiguous.
+  Current stop < avg_buy_price              → No tier applied
+  Current stop ≥ avg_buy_price              → Tier 1 applied
+  Current stop ≥ avg_buy_price × 1.10      → Tier 2 applied
+  Current stop ≥ avg_buy_price × 1.30      → Tier 3 applied
+  Stop is a trailing stop                   → Tier 4 applied
+Apply the next tier above the highest already-applied tier if the gain
+threshold for that tier has been reached. Never re-apply an already-applied tier.
+
   Tier 1 — Breakeven protection (gain ≥15%):
     Cancel the existing stop (GTC or GFD); replace it at entry price (avg_buy_price)
     using the same order type. Confirm before continuing. Restore original if fails.
 
   Tier 2 — Partial profit lock (gain ≥25%):
-    Sell 25% of current shares. Raise stop on remainder to entry +10%.
+    Sell 25% of current whole shares. Raise stop on remainder to entry +10%.
     Execute the sell following the same procedure as STEP 4.
 
   Tier 3 — Additional partial profit (gain ≥50%):
-    Sell 25% of original share count. Raise stop on remainder to entry +30%.
+    Sell 25% of original whole-share count (use current quantity + all
+    prior whole-share sells to estimate original; round down).
+    Raise stop on remainder to entry +30%.
 
   Tier 4 — Extended run (gain ≥100%):
-    Sell 25% of original share count. Trail remaining at 20% below highest close.
+    Sell 25% of original whole-share count. Trail remaining at 20% below highest close.
 
   Weight trim: If position value exceeds 1.5× its score-based target weight,
     trim back to target weight regardless of tier.
@@ -143,6 +155,12 @@ Position sizing (use portfolio equity basis, not buying power):
   Score 7    → up to 5% of portfolio equity
   Apply all sector (≤40%), theme (≤25%), cash reserve, and 10%-max-position limits.
   Minimum purchase: 2% of portfolio equity. Skip if final amount is below this.
+
+SECTOR AND THEME EXPOSURE — always compute from current positions via
+  get_equity_positions. This data is never unavailable — derive it from
+  held symbols and their market values. Use training knowledge for GICS
+  sector and theme classification if the API does not return it.
+  Sector/theme data is never a valid reason to skip the buy gate.
 
 For each buy:
   1. Verify bid-ask spread ≤1% — skip if wider.

@@ -194,20 +194,31 @@ For every held position, evaluate these tiers using P&L% vs avg_buy_price.
 Apply the highest tier reached that has not yet been applied to the position.
 Document which tier was applied and why.
 
+TIER STATE DETECTION — infer applied tiers from current stop price only.
+Do NOT scan order history to determine tier state; order history is ambiguous.
+  Current stop < avg_buy_price              → No tier applied
+  Current stop ≥ avg_buy_price              → Tier 1 applied
+  Current stop ≥ avg_buy_price × 1.10      → Tier 2 applied
+  Current stop ≥ avg_buy_price × 1.30      → Tier 3 applied
+  Stop is a trailing stop                   → Tier 4 applied
+Apply the next tier above the highest already-applied tier if the gain
+threshold for that tier has been reached. Never re-apply an already-applied tier.
+
   Tier 1 — Breakeven protection (gain ≥15%):
     Raise the GTC protective stop to entry price (avg_buy_price).
     Cancel the existing stop and immediately replace it at the new level.
 
   Tier 2 — Partial profit lock (gain ≥25%):
-    Sell 25% of current shares (round down to whole shares).
+    Sell 25% of current whole shares (round down to whole shares).
     Raise the GTC stop on remaining shares to entry +10%.
 
   Tier 3 — Additional partial profit (gain ≥50%):
-    Sell another 25% of original share count.
+    Sell 25% of original whole-share count (use current quantity + all
+    prior whole-share sells to estimate original; round down).
     Raise the GTC stop on remaining shares to entry +30%.
 
   Tier 4 — Extended run profit (gain ≥100%):
-    Sell another 25% of original share count.
+    Sell 25% of original whole-share count.
     Switch remaining shares to a trailing stop: GTC stop at 20% below
     the highest completed daily close since purchase.
 
@@ -311,6 +322,17 @@ similar business model, revenue-growth profile, margin structure, and end market
 
 ── STEP 10 · POSITION SIZING ──────────────────────────────────────────────────
 Only candidates with final score ≥7 are eligible. Use settled cash only.
+
+SECTOR AND THEME EXPOSURE — compute from current positions only.
+Do NOT treat sector/theme data as unavailable; it is always derivable:
+  • Sector exposure: sum market values of held positions in each GICS sector
+    divided by total portfolio equity. Use training knowledge for GICS sector
+    classification if the API does not return it.
+  • Theme exposure: sum market values of held positions sharing a primary
+    economic theme (e.g., AI/semiconductor-capex, SaaS/cloud, fintech,
+    healthcare/biotech) divided by total portfolio equity.
+  • Sector/theme data is never a valid reason to skip the buy gate.
+    If classification is uncertain, use best available judgment and label it.
 
 Target weights based on total portfolio equity after confirmed sells:
   Score 9–10 → up to 10% of portfolio equity
