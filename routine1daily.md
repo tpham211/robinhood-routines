@@ -64,6 +64,14 @@ If RECOVERY_MODE is not set, continue normally below.
 If any required data is unavailable, stale, contradictory, or unverifiable,
 do not trade and report the failure in the final output.
 
+IMPORTANT — cost-basis source authority:
+  Use get_equity_positions average_buy_price as the sole authoritative cost
+  basis for all trading decisions (stop placement, P&L, tier detection).
+  get_equity_tax_lots cost_per_share reflects IRS wash-sale adjustments and
+  WILL differ from average_buy_price — this is expected and normal, not a
+  data integrity failure. Never cross-check or reconcile these two fields.
+  Never halt trading because they disagree.
+
 ── IDEMPOTENCY CHECK ─────────────────────────────────────────────────────────
   1. Call get_equity_orders for today's Eastern Time date with
      placed_agent=agentic. Include filled, partially_filled, new, queued,
@@ -204,20 +212,20 @@ Do NOT scan order history to determine tier state; order history is ambiguous.
 Apply the next tier above the highest already-applied tier if the gain
 threshold for that tier has been reached. Never re-apply an already-applied tier.
 
-  Tier 1 — Breakeven protection (gain ≥15%):
+  Tier 1 — Breakeven protection (gain ≥12%):
     Raise the GTC protective stop to entry price (avg_buy_price).
     Cancel the existing stop and immediately replace it at the new level.
 
-  Tier 2 — Partial profit lock (gain ≥25%):
+  Tier 2 — Partial profit lock (gain ≥23%):
     Sell 25% of current whole shares (round down to whole shares).
     Raise the GTC stop on remaining shares to entry +10%.
 
-  Tier 3 — Additional partial profit (gain ≥50%):
+  Tier 3 — Additional partial profit (gain ≥44%):
     Sell 25% of original whole-share count (use current quantity + all
     prior whole-share sells to estimate original; round down).
     Raise the GTC stop on remaining shares to entry +30%.
 
-  Tier 4 — Extended run profit (gain ≥100%):
+  Tier 4 — Extended run profit (gain ≥95%):
     Sell 25% of original whole-share count.
     Switch remaining shares to a trailing stop: GTC stop at 20% below
     the highest completed daily close since purchase.
@@ -255,16 +263,44 @@ Mark SELL when one of the following applies:
       invalidates the investment thesis.
 
   Fundamental Exit (position held ≥2 completed trading sessions):
-    • Final score is 4 or lower.
+    • Final score is 4 or lower AND a verifiable fundamental news event
+      (earnings miss, guidance cut, fraud, litigation, product failure) explains
+      the low score. Document the specific event in output.
+    • Final score is 5 or lower AND held ≥3 completed trading sessions AND
+      a verifiable fundamental news event explains the low score.
     • Company materially reduced guidance and revised growth outlook no longer
       qualifies under the Growth Score.
 
-  Technical + Conviction Exit (all three must be true):
-    • Final score is 6 or lower.
-    • Held ≥5 completed trading sessions since THIS account's purchase date.
-      Count only sessions elapsed since the position was opened — do not count
-      sessions the stock was below its MA before the position was opened.
-    • Stock closed below its 50-day MA on two consecutive completed sessions.
+  SCORE STABILITY — mandatory gate before ANY score-based exit:
+    Every position held was purchased at score ≥7 (entry threshold). A current
+    score of ≤5 therefore implies a drop of ≥2 points by definition.
+    Before executing a score-based exit you MUST document ALL of the following:
+      a. Which specific rubric components scored 0 and the concrete reason for each.
+         "API did not return the field" and "training knowledge is dated" are NOT
+         valid reasons to score 0 — use best available data per Step 3.
+      b. A specific, verifiable fundamental news event from the past 5 trading
+         sessions (earnings miss, guidance cut, fraud, litigation, product failure)
+         that caused the deterioration. News must be company-specific and material.
+
+    If you cannot document both (a) and (b): DEFER the exit one session.
+      Label it "DEFERRED — score stability check, no verified news" in output.
+      Re-score next run. If the score remains low with verified news, exit then.
+
+    If you can document both (a) and (b): proceed with the exit.
+
+    DEFAULT IS DEFER. A one-session delay costs little. A premature exit on a
+    scoring error costs the full position upside.
+
+    NEVER exit because training-knowledge data is from an older quarter.
+    Data staleness is not deterioration — score with best available data,
+    note the quarter, and do not deduct points for age alone.
+
+  Technical + Conviction Exit (score ≤6, held ≥5 sessions, AND at least one of):
+    • Stock closed below its 50-day MA on two consecutive completed sessions, OR
+    • Current price is below BOTH the 50-day MA AND the 200-day MA.
+    Held ≥5 completed trading sessions since THIS account's purchase date.
+    Count only sessions elapsed since the position was opened — do not count
+    sessions the stock was below its MA before the position was opened.
 
 Positions scoring 5–6 that do not meet a sell condition: HOLD, cannot be increased.
 Never sell a position during its first trading session except for Emergency Exit.
@@ -297,7 +333,7 @@ Begin with:
   PLTR, HOOD, IBKR, PGR, SPCX, CVS, DAL, OXY, IONQ, RKLB, AVGO, SBUX,
   NKE, CAVA, POOL, CRM, NOW, CMG, TSM, META, AMZN, CRWD, DDOG, COIN,
   APP, CELH, AXON, DUOL, ALAB, ARM, NVDA, GOOGL, MSFT, TSLA, ZTS, SFM,
-  TSCO, TXRH, LULU, COST, LRCX, ASML, MRVL, MDB, V, MC, AMAT, AAPL,
+  TSCO, TXRH, LULU, COST, LRCX, ASML, MRVL, MDB, V, AMAT, AAPL,
   DE, GEV, PSA, HD, LOW, ULTA, ODFL, MNST, COCO, CBRE, CBOE, COF, RMD,
   PH, PTC, KNSL, TW, STE, CME, CB, SAP, JNJ, ADI, MCK
 
@@ -321,7 +357,19 @@ similar business model, revenue-growth profile, margin structure, and end market
   If valid peer or valuation data is unavailable, do not purchase the candidate.
 
 ── STEP 10 · POSITION SIZING ──────────────────────────────────────────────────
-Only candidates with final score ≥7 are eligible. Use settled cash only.
+REGIME-BASED SCORE THRESHOLD:
+  RISK-ON regime   → candidates scoring ≥7 are eligible
+  NEUTRAL regime   → candidates scoring ≥8 are eligible
+  RISK-OFF regime  → no new buys regardless of score
+
+Only candidates meeting the regime threshold are eligible. Use settled cash only.
+
+ENTRY FILTER — candidate must be trading above its 50-day MA at time of purchase.
+  Compute from get_equity_historicals (1 year, daily) using previous completed closes.
+  If current price < 50-day MA → SKIP. Do not purchase. Do not substitute a market
+  order or recheck later in the run. If historical data is unavailable, SKIP the
+  candidate — absence of data is not clearance to buy.
+  This filter is mandatory and cannot be overridden for any reason.
 
 SECTOR AND THEME EXPOSURE — compute from current positions only.
 Do NOT treat sector/theme data as unavailable; it is always derivable:
@@ -367,7 +415,15 @@ purchase when fewer than 5 candidates qualify.
 For each buy:
   1. Call get_equity_tradability.
   2. Confirm no existing or pending buy order for the symbol exists.
-  3. Verify post-trade portfolio satisfies all position, sector, theme, cash,
+  3. If the symbol is already held as a position, verify ALL THREE conditions
+     before proceeding — if any one fails, skip this candidate entirely:
+       a. Current position is below its score-based target weight
+       b. Current price > avg_buy_price (position is profitable)
+       c. Current score ≥ 8
+     This check is mandatory and cannot be skipped or overridden. A position
+     that is unprofitable (current price < avg_buy_price) must never be added
+     to, regardless of score or weight.
+  4. Verify post-trade portfolio satisfies all position, sector, theme, cash,
      and risk limits.
   4. Verify bid-ask spread ≤1% — skip if wider.
   5. Calculate share quantity from the approved dollar allocation.

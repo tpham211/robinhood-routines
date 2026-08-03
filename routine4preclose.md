@@ -46,28 +46,52 @@ Do NOT scan order history to determine tier state; order history is ambiguous.
 Apply the next tier above the highest already-applied tier if the gain
 threshold for that tier has been reached. Never re-apply an already-applied tier.
 
-  Tier 1 — Breakeven protection (gain ≥15%):
+  Tier 1 — Breakeven protection (gain ≥12%):
     Cancel the existing stop (GTC or GFD); replace it at entry price (avg_buy_price)
     using the same order type. Confirm before continuing. Restore original if fails.
 
-  Tier 2 — Partial profit lock (gain ≥25%):
+  Tier 2 — Partial profit lock (gain ≥23%):
     Sell 25% of current whole shares. Raise stop on remainder to entry +10%.
     Execute the sell following the same procedure as STEP 4.
 
-  Tier 3 — Additional partial profit (gain ≥50%):
+  Tier 3 — Additional partial profit (gain ≥44%):
     Sell 25% of original whole-share count (use current quantity + all
     prior whole-share sells to estimate original; round down).
     Raise stop on remainder to entry +30%.
 
-  Tier 4 — Extended run (gain ≥100%):
+  Tier 4 — Extended run (gain ≥95%):
     Sell 25% of original whole-share count. Trail remaining at 20% below highest close.
 
   Weight trim: If position value exceeds 1.5× its score-based target weight,
     trim back to target weight regardless of tier.
+    ALWAYS compute position weights from get_equity_positions market values.
+    This data is never unavailable — weight trim is never optional.
 
 ── STEP 3B · SELL DECISION ──────────────────────────────────────────────────
 GTC protective stops handle emergency price exits automatically.
 This run applies final pre-close discretionary sell rules only.
+
+SCORE STABILITY — mandatory gate before ANY score-based exit:
+  Every position held was purchased at score ≥7 (entry threshold). A current
+  score of ≤5 therefore implies a drop of ≥2 points by definition.
+  Before executing a score-based exit you MUST document ALL of the following:
+    a. Which specific rubric components scored 0 and the concrete reason for each.
+       "API did not return the field" and "training knowledge is dated" are NOT
+       valid reasons to score 0 — use best available data per the scoring rubric.
+    b. A specific, verifiable fundamental news event from the past 5 trading
+       sessions (earnings miss, guidance cut, fraud, litigation, product failure)
+       that caused the deterioration. News must be company-specific and material.
+  If you cannot document both (a) and (b): DEFER the exit one session.
+    Label it "DEFERRED — score stability check, no verified news" in output.
+  If you can document both (a) and (b): proceed with the exit.
+  DEFAULT IS DEFER. NEVER exit because training-knowledge data is from an
+  older quarter — data staleness is not deterioration.
+
+SELL on any circuit state (slow deterioration):
+  • Final score ≤5 AND position held ≥3 completed trading sessions.
+    Score stability check does not apply — act immediately.
+  • Score ≤6 AND current price below BOTH 50-day MA AND 200-day MA
+    AND held ≥5 completed trading sessions.
 
 SELL on RED circuit:
   • Position down >4% intraday AND conviction score <7
@@ -90,8 +114,10 @@ available. If not available, apply the two-source scoring method:
      knowledge from the most recently reported quarter. Do not award 0
      solely because the API did not return a field — use best available data.
   3. For Relative Strength, always use live price data from get_equity_historicals.
-  4. Fetch the full rubric from:
-     https://raw.githubusercontent.com/tpham211/robinhood-routines/main/routine1daily.md
+  4. Score using the rubric embedded in this routine (Revenue Growth 0–2,
+     EPS/FCF Growth 0–2, Revenue Acceleration 0–1, Margin Expansion 0–1,
+     Relative Strength 0–2, Verified Catalyst 0–1, Balance Sheet 0–1),
+     then apply red-flag deductions per the same rubric.
   5. Label each score component with its data source [API], [TK:YYYY-Qn], or [LIVE].
 IMPORTANT: A score based on training knowledge is valid. Scoring everything 0
 because the API omitted a field is incorrect and must not be done.

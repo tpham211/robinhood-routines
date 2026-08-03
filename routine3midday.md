@@ -51,20 +51,20 @@ Do NOT scan order history to determine tier state; order history is ambiguous.
 Apply the next tier above the highest already-applied tier if the gain
 threshold for that tier has been reached. Never re-apply an already-applied tier.
 
-  Tier 1 — Breakeven protection (gain ≥15%):
+  Tier 1 — Breakeven protection (gain ≥12%):
     Cancel the existing stop (GTC or GFD); replace it at entry price (avg_buy_price)
     using the same order type. Confirm before continuing. Restore original if fails.
 
-  Tier 2 — Partial profit lock (gain ≥25%):
+  Tier 2 — Partial profit lock (gain ≥23%):
     Sell 25% of current whole shares. Raise stop on remainder to entry +10%.
     Execute the sell following the same procedure as STEP 4.
 
-  Tier 3 — Additional partial profit (gain ≥50%):
+  Tier 3 — Additional partial profit (gain ≥44%):
     Sell 25% of original whole-share count (use current quantity + all
     prior whole-share sells to estimate original; round down).
     Raise stop on remainder to entry +30%.
 
-  Tier 4 — Extended run (gain ≥100%):
+  Tier 4 — Extended run (gain ≥95%):
     Sell 25% of original whole-share count. Trail remaining at 20% below highest close.
 
   Weight trim: If position value exceeds 1.5× its score-based target weight,
@@ -74,19 +74,46 @@ threshold for that tier has been reached. Never re-apply an already-applied tier
 GTC protective stops handle emergency price exits automatically.
 This run applies tightened discretionary thresholds given the 4-hour recovery window.
 
+SCORE STABILITY — mandatory gate before ANY score-based exit:
+  Every position held was purchased at score ≥7 (entry threshold). A current
+  score of ≤5 therefore implies a drop of ≥2 points by definition.
+  Before executing a score-based exit you MUST document ALL of the following:
+    a. Which specific rubric components scored 0 and the concrete reason for each.
+       "API did not return the field" and "training knowledge is dated" are NOT
+       valid reasons to score 0 — use best available data per the scoring rubric.
+    b. A specific, verifiable fundamental news event from the past 5 trading
+       sessions (earnings miss, guidance cut, fraud, litigation, product failure)
+       that caused the deterioration. News must be company-specific and material.
+  If you cannot document both (a) and (b): DEFER the exit one session.
+    Label it "DEFERRED — score stability check, no verified news" in output.
+  If you can document both (a) and (b): proceed with the exit.
+  DEFAULT IS DEFER. NEVER exit because training-knowledge data is from an
+  older quarter — data staleness is not deterioration.
+
+SELL on any circuit state (slow deterioration):
+  • Final score ≤5 AND position held ≥3 completed trading sessions.
+    Score stability check does not apply — act immediately.
+  • Score ≤6 AND current price below BOTH 50-day MA AND 200-day MA
+    AND held ≥5 completed trading sessions.
+
 SELL on any circuit state (tightened midday thresholds):
   • Position down >3% intraday AND conviction score ≤7
+    AND held ≥3 completed trading sessions
 
 SELL on RED circuit:
   • Position down >2% intraday AND conviction score ≤6
+    AND held ≥3 completed trading sessions
   • Position down >4% intraday (any conviction score)
+    AND held ≥3 completed trading sessions
 
 SELL on any circuit state (material thesis invalidation):
   • A specific, verifiable fundamental event (guidance cut, fraud, litigation)
     that materially invalidates the investment thesis for a pre-existing position.
 
 NEVER sell (discretionary):
-  • Any position purchased today — except for material thesis invalidation above.
+  • Any position held fewer than 2 completed trading sessions — except for
+    material thesis invalidation above. The GTC stop handles emergency exits
+    for new positions.
   • Any position solely because it is down from avg_buy_price.
     The GTC protective stop handles that exit.
 
@@ -98,8 +125,10 @@ available. If not available, apply the two-source scoring method:
      knowledge from the most recently reported quarter. Do not award 0
      solely because the API did not return a field — use best available data.
   3. For Relative Strength, always use live price data from get_equity_historicals.
-  4. Fetch the full rubric from:
-     https://raw.githubusercontent.com/tpham211/robinhood-routines/main/routine1daily.md
+  4. Score using the rubric embedded in this routine (Revenue Growth 0–2,
+     EPS/FCF Growth 0–2, Revenue Acceleration 0–1, Margin Expansion 0–1,
+     Relative Strength 0–2, Verified Catalyst 0–1, Balance Sheet 0–1),
+     then apply red-flag deductions per the same rubric.
   5. Label each score component with its data source [API], [TK:YYYY-Qn], or [LIVE].
 IMPORTANT: A score based on training knowledge is valid. Scoring everything 0
 because the API omitted a field is incorrect and must not be done.
@@ -145,8 +174,18 @@ using get_equity_fundamentals + the Growth Score rubric (same method as above):
    PLTR, AXON, DUOL, COIN, RKLB, AVGO, MRVL, ARM, CRM, NOW,
    LLY, ISRG, V, CBOE, CME, COF, GEV, PH, COST, TXRH]
 
-Only candidates scoring ≥7 are eligible for purchase. Max 1 new order this run.
-Do NOT apply a higher threshold (e.g. ≥9) — ≥7 is the correct minimum.
+REGIME-BASED SCORE THRESHOLD:
+  RISK-ON regime   → candidates scoring ≥7 are eligible
+  NEUTRAL regime   → candidates scoring ≥8 are eligible
+  RISK-OFF regime  → no new buys regardless of score
+Only candidates meeting the regime threshold are eligible. Max 1 new order this run.
+
+ENTRY FILTER — candidate must be trading above its 50-day MA at time of purchase.
+  Compute from get_equity_historicals (1 year, daily) using previous completed closes.
+  If current price < 50-day MA → SKIP. Do not purchase. Do not substitute a market
+  order or recheck later in the run. If historical data is unavailable, SKIP the
+  candidate — absence of data is not clearance to buy.
+  This filter is mandatory and cannot be overridden for any reason.
 Among eligible candidates, prioritize the highest-scoring first.
 
 Position sizing (use portfolio equity basis, not buying power):
@@ -163,8 +202,14 @@ SECTOR AND THEME EXPOSURE — always compute from current positions via
   Sector/theme data is never a valid reason to skip the buy gate.
 
 For each buy:
-  1. Verify bid-ask spread ≤1% — skip if wider.
-  2. Calculate share quantity from the approved dollar allocation.
+  1. If the symbol is already held as a position, verify ALL THREE conditions
+     before proceeding — if any one fails, skip this candidate entirely:
+       a. Current position is below its score-based target weight
+       b. Current price > avg_buy_price (position is profitable)
+       c. Current score ≥ 8
+     A position that is unprofitable must never be added to. No exceptions.
+  2. Verify bid-ask spread ≤1% — skip if wider.
+  3. Calculate share quantity from the approved dollar allocation.
      Always round DOWN to the nearest whole share — no fractional purchases.
   3. Call review_equity_order. Abort if review differs from intended order.
   4. Place a share-based GFD limit order. Set limit ≤0.5% above current quote.
