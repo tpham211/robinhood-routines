@@ -157,9 +157,29 @@ REGIME DETECTION (compute independently — do not rely on morning run output):
   RISK-OFF: SPY below 200MA AND QQQ below 200MA
   UNKNOWN:  Data unavailable → skip all buys this run
 
-COOLING-OFF RULE: Any symbol exited via a triggered stop OR discretionary sell
-  within the last 2 completed trading sessions is ineligible for purchase.
-  Check get_equity_orders (filled, past 5 days) before scoring candidates.
+COOLING-OFF RULE — mandatory, enforced by date arithmetic:
+  Call get_equity_orders (state=filled, past 7 calendar days). For each
+  filled sell order, note its last_transaction_at date converted to ET.
+  A symbol is BLOCKED if its most recent filled sell occurred within the
+  last 2 completed NYSE trading sessions counted back from today:
+    Session 1 ago = most recent prior trading day
+    Session 2 ago = trading day before that
+  The symbol is eligible again starting the 3rd trading session after
+  the fill date. Count NYSE trading days only — weekends and market
+  holidays do NOT count as sessions elapsed.
+
+  CONCRETE EXAMPLES (apply these exactly):
+    Sell fills Tuesday  → blocked Tue + Wed + Thu. Eligible Friday.
+    Sell fills Friday   → blocked Fri + Mon + Tue. Eligible Wednesday.
+    Sell fills Monday   → blocked Mon + Tue + Wed. Eligible Thursday.
+
+  If elapsed session count cannot be determined with certainty, apply a
+  5-calendar-day block from the fill date as the safe fallback — never
+  assume zero sessions have elapsed.
+
+  Applies to ALL exits: GTC stop triggers, GFD stop triggers, and
+  any discretionary sell. Cannot be waived because the score looks
+  favorable or the symbol appears in today's top candidates.
 
 All conditions must be true to proceed:
   • Circuit = GREEN
