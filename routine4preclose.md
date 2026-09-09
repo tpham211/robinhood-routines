@@ -40,26 +40,26 @@ TIER STATE DETECTION — infer applied tiers from current stop price only.
 Do NOT scan order history to determine tier state; order history is ambiguous.
   Current stop < avg_buy_price              → No tier applied
   Current stop ≥ avg_buy_price              → Tier 1 applied
-  Current stop ≥ avg_buy_price × 1.10      → Tier 2 applied
-  Current stop ≥ avg_buy_price × 1.30      → Tier 3 applied
+  Current stop ≥ avg_buy_price × 1.08      → Tier 2 applied
+  Current stop ≥ avg_buy_price × 1.20      → Tier 3 applied
   Stop is a trailing stop                   → Tier 4 applied
 Apply the next tier above the highest already-applied tier if the gain
 threshold for that tier has been reached. Never re-apply an already-applied tier.
 
-  Tier 1 — Breakeven protection (gain ≥12%):
+  Tier 1 — Breakeven protection (gain ≥8%):
     Cancel the existing stop (GTC or GFD); replace it at entry price (avg_buy_price)
     using the same order type. Confirm before continuing. Restore original if fails.
 
-  Tier 2 — Partial profit lock (gain ≥23%):
-    Sell 25% of current whole shares. Raise stop on remainder to entry +10%.
+  Tier 2 — Partial profit lock (gain ≥15%):
+    Sell 25% of current whole shares. Raise stop on remainder to entry +8%.
     Execute the sell following the same procedure as STEP 4.
 
-  Tier 3 — Additional partial profit (gain ≥44%):
+  Tier 3 — Additional partial profit (gain ≥30%):
     Sell 25% of original whole-share count (use current quantity + all
     prior whole-share sells to estimate original; round down).
-    Raise stop on remainder to entry +30%.
+    Raise stop on remainder to entry +20%.
 
-  Tier 4 — Extended run (gain ≥95%):
+  Tier 4 — Extended run (gain ≥60%):
     Sell 25% of original whole-share count. Trail remaining at 20% below highest close.
 
   Weight trim: If position value exceeds 1.5× its score-based target weight,
